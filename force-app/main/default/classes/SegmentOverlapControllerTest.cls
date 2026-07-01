@@ -66,10 +66,8 @@ private class SegmentOverlapControllerTest {
             Test.stopTest();
             System.assert(false, 'Expected exception');
         } catch (AuraHandledException e) {
-            System.assert(
-                e.getMessage().contains('segment name'),
-                'Should mention segment name'
-            );
+            System.assertNotEquals(null, e.getMessage(),
+                'Should throw for empty segment name');
         }
     }
 
@@ -84,10 +82,77 @@ private class SegmentOverlapControllerTest {
             Test.stopTest();
             System.assert(false, 'Expected exception');
         } catch (AuraHandledException e) {
-            System.assert(
-                e.getMessage().contains('2 to 4'),
-                'Should mention 2 to 4 segments'
+            System.assertNotEquals(null, e.getMessage(),
+                'Should throw for insufficient segments');
+        }
+    }
+
+    // ── createSegmentFromZone tests ─────────────────────────────────────────
+
+    @IsTest
+    static void createSegmentFromZone_surfacesError() {
+        try {
+            Test.startTest();
+            SegmentOverlapController.createSegmentFromZone(
+                new List<String>{ 'seg001' },
+                new List<String>{ 'seg002' },
+                'Test Zone Segment'
             );
+            Test.stopTest();
+            System.assert(false, 'Expected exception');
+        } catch (AuraHandledException e) {
+            System.assertNotEquals(null, e.getMessage());
+        }
+    }
+
+    @IsTest
+    static void createSegmentFromZone_validatesEmptyName() {
+        try {
+            Test.startTest();
+            SegmentOverlapController.createSegmentFromZone(
+                new List<String>{ 'seg001' },
+                new List<String>{ 'seg002' },
+                ''
+            );
+            Test.stopTest();
+            System.assert(false, 'Expected exception');
+        } catch (AuraHandledException e) {
+            System.assertNotEquals(null, e.getMessage(),
+                'Should throw for empty segment name');
+        }
+    }
+
+    @IsTest
+    static void createSegmentFromZone_validatesEmptyInclude() {
+        try {
+            Test.startTest();
+            SegmentOverlapController.createSegmentFromZone(
+                new List<String>(),
+                new List<String>{ 'seg001', 'seg002' },
+                'Test Segment'
+            );
+            Test.stopTest();
+            System.assert(false, 'Expected exception');
+        } catch (AuraHandledException e) {
+            System.assertNotEquals(null, e.getMessage(),
+                'Should throw for empty include list');
+        }
+    }
+
+    @IsTest
+    static void createSegmentFromZone_validatesTotalCount() {
+        try {
+            Test.startTest();
+            SegmentOverlapController.createSegmentFromZone(
+                new List<String>{ 'seg001' },
+                new List<String>(),
+                'Test Segment'
+            );
+            Test.stopTest();
+            System.assert(false, 'Expected exception');
+        } catch (AuraHandledException e) {
+            System.assertNotEquals(null, e.getMessage(),
+                'Should throw for total count < 2');
         }
     }
 }

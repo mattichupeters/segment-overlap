@@ -2,6 +2,7 @@ import { LightningElement, track } from 'lwc';
 import getSegments from '@salesforce/apex/SegmentOverlapController.getSegments';
 import calculateMultiOverlap from '@salesforce/apex/SegmentOverlapController.calculateMultiOverlap';
 import createSegmentFromOverlap from '@salesforce/apex/SegmentOverlapController.createSegmentFromOverlap';
+import createSegmentFromZone from '@salesforce/apex/SegmentOverlapController.createSegmentFromZone';
 
 // Salesforce CRM Analytics palette — matches Engagement Insights dashboard charts
 const SF_COLORS = [
@@ -29,6 +30,12 @@ export default class SegmentOverlapApp extends LightningElement {
     @track isCreatingSegment = false;
     @track createError       = '';
     @track createSuccess     = '';
+
+    // Zone-click state
+    @track zoneIncludeIds    = [];
+    @track zoneExcludeIds    = [];
+    @track zoneDescription   = '';
+    @track isZoneCreate      = false;
 
     _segmentMap = {};
 
@@ -205,7 +212,59 @@ export default class SegmentOverlapApp extends LightningElement {
         return this.isCreatingSegment ? 'Creating…' : 'Create Segment';
     }
 
+    get createModalTitle() {
+        return this.isZoneCreate
+            ? 'Create Segment from Zone'
+            : 'Create Segment from Overlap';
+    }
+
+    get createModalDescription() {
+        if (this.isZoneCreate) {
+            return this.zoneDescription;
+        }
+        return null;
+    }
+
+    get createModalOverlapDescription() {
+        if (!this.isZoneCreate && this.result) {
+            return `This will create a new Data Cloud segment containing the ${this.formattedAllOverlap} members that overlap across all ${this.selectedSegmentCount} selected segments.`;
+        }
+        return null;
+    }
+
+    // ─── Zone click from Venn diagram ─────────────────────────────────────────
+
+    handleZoneClick(event) {
+        const { include, exclude } = event.detail;
+
+        // Map indices to actual segment IDs and names
+        const includeIds = include.map(i => this.selectedIds[i]);
+        const excludeIds = exclude.map(i => this.selectedIds[i]);
+
+        const includeNames = include.map(i => this._segmentMap[this.selectedIds[i]]?.name ?? 'Unknown');
+        const excludeNames = exclude.map(i => this._segmentMap[this.selectedIds[i]]?.name ?? 'Unknown');
+
+        // Build a human-readable description of the zone
+        let desc = 'Members in ' + includeNames.join(' AND ');
+        if (excludeNames.length > 0) {
+            desc += ', but NOT in ' + excludeNames.join(' or ');
+        }
+
+        this.zoneIncludeIds  = includeIds;
+        this.zoneExcludeIds  = excludeIds;
+        this.zoneDescription = desc;
+        this.isZoneCreate    = true;
+        this.showCreateModal = true;
+        this.newSegmentName  = '';
+        this.createError     = '';
+        this.createSuccess   = '';
+    }
+
     handleOpenCreateModal() {
+        this.isZoneCreate    = false;
+        this.zoneIncludeIds  = [];
+        this.zoneExcludeIds  = [];
+        this.zoneDescription = '';
         this.showCreateModal = true;
         this.newSegmentName  = '';
         this.createError     = '';
@@ -214,6 +273,10 @@ export default class SegmentOverlapApp extends LightningElement {
     handleCloseCreateModal() {
         this.showCreateModal = false;
         this.newSegmentName  = '';
+        this.isZoneCreate    = false;
+        this.zoneIncludeIds  = [];
+        this.zoneExcludeIds  = [];
+        this.zoneDescription = '';
     }
 
     handleSegmentNameChange(e) {
@@ -227,10 +290,21 @@ export default class SegmentOverlapApp extends LightningElement {
         this.createError       = '';
         this.createSuccess     = '';
         try {
-            const result = await createSegmentFromOverlap({
-                segmentIds:  this.selectedIds,
-                segmentName: this.newSegmentName.trim()
-            });
+            let result;
+            if (this.isZoneCreate) {
+                // Zone-based creation (clicked a specific Venn region)
+                result = await createSegmentFromZone({
+                    includeIds:  this.zoneIncludeIds,
+                    excludeIds:  this.zoneExcludeIds,
+                    segmentName: this.newSegmentName.trim()
+                });
+            } else {
+                // Legacy all-overlap creation
+                result = await createSegmentFromOverlap({
+                    segmentIds:  this.selectedIds,
+                    segmentName: this.newSegmentName.trim()
+                });
+            }
             this.createSuccess   = result.displayName || this.newSegmentName.trim();
             this.showCreateModal = false;
             this.newSegmentName  = '';
@@ -240,6 +314,10 @@ export default class SegmentOverlapApp extends LightningElement {
             this.showCreateModal = false;
         } finally {
             this.isCreatingSegment = false;
+            this.isZoneCreate    = false;
+            this.zoneIncludeIds  = [];
+            this.zoneExcludeIds  = [];
+            this.zoneDescription = '';
         }
     }
 

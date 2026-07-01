@@ -5,14 +5,14 @@
                  viewBox={viewBox}
                  class="venn-svg"
                  role="img"
-                 aria-label="Venn diagram showing segment overlap">
+                 aria-label="Interactive Venn diagram — click any zone to create a segment">
 
                 <!-- Clean white background -->
                 <rect x="0" y="0" width="620" height="400"
                       fill="#FFFFFF">
                 </rect>
 
-                <!-- Circles -->
+                <!-- Background circles (visual fill + stroke) -->
                 <template for:each={circles} for:item="c">
                     <circle key={c.key}
                             cx={c.cx} cy={c.cy} r={c.r}
@@ -22,27 +22,51 @@
                     </circle>
                 </template>
 
+                <!-- Clickable zone paths (transparent overlay with hover effect) -->
+                <template for:each={zonePaths} for:item="zone">
+                    <path key={zone.key}
+                          d={zone.d}
+                          class="zone-path"
+                          data-include={zone.include}
+                          data-exclude={zone.exclude}
+                          onclick={handleZoneClick}
+                          role="button"
+                          tabindex="0">
+                        <title>{zone.label}</title>
+                    </path>
+                </template>
+
                 <!-- Count labels inside circles -->
-                <template for:each={circles} for:item="c">
+                <template for:each={circleCountLabels} for:item="c">
                     <text key={c.key}
-                          x={c.countX} y={c.countY}
+                          x={c.x} y={c.y}
                           text-anchor="middle" dominant-baseline="middle"
                           font-family="'Salesforce Sans','Helvetica Neue',Helvetica,Arial,sans-serif"
-                          font-size="15" font-weight="700" fill={c.txtFill}>
+                          font-size="15" font-weight="700" fill={c.txtFill}
+                          class="label-text">
                         {c.count}
                     </text>
                 </template>
 
                 <!-- Segment name labels below circles -->
-                <template for:each={circles} for:item="c">
+                <template for:each={circleLabels} for:item="c">
                     <text key={c.key}
-                          x={c.labelX} y={c.labelY}
+                          x={c.x} y={c.y}
                           text-anchor="middle"
                           font-family="'Salesforce Sans','Helvetica Neue',Helvetica,Arial,sans-serif"
-                          font-size="11" font-weight="400" fill="#706E6B">
+                          font-size="11" font-weight="400" fill="#706E6B"
+                          class="label-text">
                         {c.label}
                     </text>
                 </template>
+
+                <!-- Instruction hint -->
+                <text x="310" y="390"
+                      text-anchor="middle"
+                      font-family="'Salesforce Sans','Helvetica Neue',Helvetica,Arial,sans-serif"
+                      font-size="10" fill="#969492">
+                    Click any region to create a segment
+                </text>
 
             </svg>
         </template>

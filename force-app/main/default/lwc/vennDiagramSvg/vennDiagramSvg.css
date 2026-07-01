@@ -9,3 +9,34 @@
     height: auto;
     display: block;
 }
+
+/* Clickable zone paths — transparent by default, highlight on hover */
+.zone-path {
+    fill: transparent;
+    stroke: transparent;
+    stroke-width: 0;
+    cursor: pointer;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.zone-path:hover {
+    fill: rgba(1, 118, 211, 0.12);
+    stroke: rgba(1, 118, 211, 0.5);
+    stroke-width: 2;
+}
+
+.zone-path:active {
+    fill: rgba(1, 118, 211, 0.22);
+}
+
+.zone-path:focus {
+    outline: none;
+    fill: rgba(1, 118, 211, 0.12);
+    stroke: rgba(1, 118, 211, 0.5);
+    stroke-width: 2;
+}
+
+/* Keep text labels above zone paths (non-interactive) */
+.label-text {
+    pointer-events: none;
+}

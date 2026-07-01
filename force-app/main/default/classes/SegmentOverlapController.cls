@@ -59,4 +59,22 @@ public with sharing class SegmentOverlapController {
             throw new AuraHandledException(e.getMessage());
         }
     }
+
+    /**
+     * Create a new segment from a specific Venn zone (include/exclude logic).
+     */
+    @AuraEnabled
+    public static Map<String, Object> createSegmentFromZone(
+        List<String> includeIds,
+        List<String> excludeIds,
+        String segmentName
+    ) {
+        try {
+            return DataCloudService.createSegmentFromZone(
+                includeIds, excludeIds, segmentName
+            );
+        } catch (Exception e) {
+            throw new AuraHandledException(e.getMessage());
+        }
+    }
 }

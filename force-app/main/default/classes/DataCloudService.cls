@@ -345,5 +345,133 @@ public with sharing class DataCloudService {
         };
     }
 
+    // ── Zone-based segment creation ──────────────────────────────────────────
+
+    /**
+     * Creates a new Data Cloud segment (DBT type) from a specific Venn zone.
+     * Members must be in ALL "include" segments and NONE of the "exclude" segments.
+     *
+     * @param includeIds  Segment IDs the member MUST belong to (1–4)
+     * @param excludeIds  Segment IDs the member must NOT belong to (0–3)
+     * @param segmentName User-chosen display name for the new segment
+     * @return Map with keys: apiName, marketSegmentId, segmentStatus, displayName
+     */
+    public static Map<String, Object> createSegmentFromZone(
+        List<String> includeIds,
+        List<String> excludeIds,
+        String segmentName
+    ) {
+        if (includeIds == null || includeIds.isEmpty()) {
+            throw new DataCloudException('At least one included segment is required.');
+        }
+        if (excludeIds == null) {
+            excludeIds = new List<String>();
+        }
+        Integer total = includeIds.size() + excludeIds.size();
+        if (total < 2 || total > 4) {
+            throw new DataCloudException('Total segments must be between 2 and 4.');
+        }
+        if (String.isBlank(segmentName)) {
+            throw new DataCloudException('Please provide a segment name.');
+        }
+
+        // Combine all IDs to discover the membership table
+        List<String> allIds = new List<String>();
+        allIds.addAll(includeIds);
+        allIds.addAll(excludeIds);
+
+        String latestTable = discoverLatestTable(allIds);
+        if (String.isBlank(latestTable)) {
+            throw new DataCloudException(
+                'No membership table found. Ensure at least one segment ' +
+                'has been published.'
+            );
+        }
+
+        // Build developer name (same pattern as createSegmentFromOverlap)
+        String devName = segmentName.replaceAll('[^a-zA-Z0-9]', '_')
+                                     .replaceAll('_+', '_')
+                                     .removeEnd('_')
+                                     .removeStart('_');
+        if (String.isBlank(devName) || !devName.substring(0, 1).isAlpha()) {
+            devName = 'Seg_' + devName;
+        }
+        String ts = String.valueOf(Datetime.now().getTime());
+        String suffix = '_x' + ts.substring(ts.length() - 8);
+        Integer maxBase = 80 - suffix.length();
+        if (devName.length() > maxBase) {
+            devName = devName.substring(0, maxBase);
+        }
+        devName = devName.removeEnd('_') + suffix;
+
+        // Convert to 15-char IDs
+        List<String> inc15 = new List<String>();
+        for (String sfId : includeIds) {
+            inc15.add(sfId.length() > 15 ? sfId.substring(0, 15) : sfId);
+        }
+        List<String> exc15 = new List<String>();
+        for (String sfId : excludeIds) {
+            exc15.add(sfId.length() > 15 ? sfId.substring(0, 15) : sfId);
+        }
+
+        // Build SQL: members in ALL included segments, NOT in ANY excluded segment
+        String tbl = latestTable;
+
+        // Base query — first included segment
+        String zoneSql =
+            'SELECT DISTINCT ' + tbl + '.Id__c, ' + tbl + '.KQ_Id__c' +
+            ' FROM ' + tbl +
+            ' WHERE ' + tbl + '.Segment_Id__c = \'' +
+            String.escapeSingleQuotes(inc15[0]) + '\'' +
+            ' AND ' + tbl + '.Id__c IS NOT NULL';
+
+        // Add WHERE IN for additional included segments
+        for (Integer i = 1; i < inc15.size(); i++) {
+            zoneSql += ' AND ' + tbl + '.Id__c IN (' +
+                'SELECT ' + tbl + '.Id__c FROM ' + tbl +
+                ' WHERE ' + tbl + '.Segment_Id__c = \'' +
+                String.escapeSingleQuotes(inc15[i]) + '\')';
+        }
+
+        // Add WHERE NOT IN for each excluded segment
+        for (Integer i = 0; i < exc15.size(); i++) {
+            zoneSql += ' AND ' + tbl + '.Id__c NOT IN (' +
+                'SELECT ' + tbl + '.Id__c FROM ' + tbl +
+                ' WHERE ' + tbl + '.Segment_Id__c = \'' +
+                String.escapeSingleQuotes(exc15[i]) + '\')';
+        }
+
+        // Create the DBT segment via ConnectApi
+        ConnectApi.CdpSegmentInput segInput = new ConnectApi.CdpSegmentInput();
+        segInput.description = 'Zone segment: include ' + includeIds.size() +
+            ', exclude ' + excludeIds.size() +
+            ' segments via Segment Overlap tool.';
+        segInput.displayName = segmentName;
+        segInput.developerName = devName;
+        segInput.segmentOnApiName = 'ssot__Individual__dlm';
+        segInput.segmentType = ConnectApi.SegmentType.Dbt;
+
+        ConnectApi.CdpSegmentDbtModelInput model =
+            new ConnectApi.CdpSegmentDbtModelInput();
+        model.name = devName;
+        model.sql  = zoneSql;
+
+        ConnectApi.CdpSegmentDbtInput dbtInput =
+            new ConnectApi.CdpSegmentDbtInput();
+        dbtInput.models =
+            new List<ConnectApi.CdpSegmentDbtModelInput>{ model };
+        segInput.includeDbt = dbtInput;
+
+        ConnectApi.CdpSegmentOutput result =
+            ConnectApi.CdpSegment.createSegment(segInput);
+
+        return new Map<String, Object>{
+            'apiName'         => result.apiName,
+            'marketSegmentId' => result.marketSegmentId,
+            'segmentStatus'   => String.valueOf(result.segmentStatus),
+            'displayName'     => segmentName
+        };
+    }
+
     public class DataCloudException extends Exception {}
 }

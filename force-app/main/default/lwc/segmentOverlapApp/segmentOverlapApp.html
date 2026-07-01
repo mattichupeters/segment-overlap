@@ -155,10 +155,11 @@
                         </table>
                     </template>
 
-                    <!-- Venn diagram -->
+                    <!-- Venn diagram (click any zone to create a segment) -->
                     <div class="venn-panel slds-m-top_medium">
                         <c-venn-diagram-svg
-                            segments-json={segmentsJsonForVenn}>
+                            segments-json={segmentsJsonForVenn}
+                            onzoneclick={handleZoneClick}>
                         </c-venn-diagram-svg>
                     </div>
 
@@ -216,14 +217,20 @@
                                        alternative-text="Close">
                         </lightning-icon>
                     </button>
-                    <h2 class="slds-modal__title slds-hyphenate">Create Segment from Overlap</h2>
+                    <h2 class="slds-modal__title slds-hyphenate">{createModalTitle}</h2>
                 </div>
                 <div class="slds-modal__content slds-p-around_medium">
-                    <p class="slds-m-bottom_medium slds-text-color_weak">
-                        This will create a new Data Cloud segment containing the
-                        <strong>{formattedAllOverlap}</strong> members that overlap
-                        across all {selectedSegmentCount} selected segments.
-                    </p>
+                    <template lwc:if={createModalDescription}>
+                        <p class="slds-m-bottom_medium slds-text-color_weak">
+                            This will create a new Data Cloud segment containing:
+                            <strong>{createModalDescription}</strong>
+                        </p>
+                    </template>
+                    <template lwc:if={createModalOverlapDescription}>
+                        <p class="slds-m-bottom_medium slds-text-color_weak">
+                            {createModalOverlapDescription}
+                        </p>
+                    </template>
                     <lightning-input
                         label="Segment Name"
                         placeholder="e.g., High-Value Cross-Channel Audience"
