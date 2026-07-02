@@ -270,12 +270,12 @@ export default class SegmentOverlapApp extends LightningElement {
     }
 
     handleOpenCreateModal() {
-        // Union of all segments — include all, exclude none
+        // Intersection of all segments — include all, exclude none
         const allNames = this.selectedIds.map(id => this._segmentMap[id]?.name ?? 'Unknown');
         this.isZoneCreate    = true;
         this.zoneIncludeIds  = [...this.selectedIds];
         this.zoneExcludeIds  = [];
-        this.zoneDescription = 'Members in ' + allNames.join(' OR ') + ' (union of all selected segments)';
+        this.zoneDescription = 'Members in ' + allNames.join(' AND ') + ' (overlap across all selected segments)';
         this.showCreateModal = true;
         this.newSegmentName  = '';
         this.createError     = '';

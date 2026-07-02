@@ -164,18 +164,18 @@
                         </c-venn-diagram-svg>
                     </div>
 
-                    <!-- Create Segment from Union -->
+                    <!-- Create Segment from Overlap -->
                     <template lwc:if={canCreateSegment}>
                         <div class="create-segment-row">
                             <lightning-button
-                                label="Create Segment from All"
+                                label="Create Segment from Overlap"
                                 variant="brand"
                                 icon-name="utility:new"
                                 onclick={handleOpenCreateModal}
                                 disabled={isCreatingSegment}>
                             </lightning-button>
                             <span class="create-segment-hint">
-                                Create a new Data Cloud segment containing all members across the {selectedSegmentCount} selected segments.
+                                Create a new Data Cloud segment from the overlap of all {selectedSegmentCount} selected segments.
                             </span>
                         </div>
                     </template>
